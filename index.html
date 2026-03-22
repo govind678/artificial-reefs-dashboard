@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Artificial Reefs of the World - Octopolis</title>
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" href="/favicon.png" sizes="512x512">
+<link rel="apple-touch-icon" href="/favicon.png">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:ital,wght@0,400;0,500;0,700;1,400&display=swap');
+
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0b1120;--panel:#111827;--card:#1e293b;--border:#334155;
+  --text:#e2e8f0;--text-dim:#94a3b8;--accent:#06b6d4;
+  --header-gradient:linear-gradient(135deg,#0f172a 0%,#1e293b 100%);
+}
+html,body{height:100%;font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(--text);overflow:hidden}
+
+/* ── LAYOUT ── */
+#app{display:grid;grid-template-rows:auto 1fr;grid-template-columns:260px 1fr;height:100vh}
+#header{grid-column:1/-1;background:var(--header-gradient);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:12px 28px;gap:20px;position:relative;overflow:hidden}
+#header::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 600px 200px at 20% 50%,rgba(6,182,212,.08),transparent);pointer-events:none}
+#sidebar{grid-row:2;background:var(--panel);border-right:1px solid var(--border);overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:14px}
+#map-wrap{grid-row:2;position:relative}
+#map{width:100%;height:100%}
+
+/* ── HEADER ── */
+.logo-group{display:flex;align-items:center;gap:16px;z-index:1}
+.octopolis-icon{width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#06b6d4,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0}
+.logo-text h1{font-family:'DM Serif Display',serif;font-size:22px;letter-spacing:.5px;color:#fff;line-height:1.15}
+.logo-text .subtitle{font-size:11.5px;color:var(--text-dim);letter-spacing:1.2px;text-transform:uppercase;font-weight:500}
+.header-meta{display:flex;align-items:center;gap:20px;z-index:1}
+.header-count{font-size:13px;color:var(--accent);font-weight:700;white-space:nowrap}
+.header-link{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:7px 10px;border-radius:999px;
+  border:1px solid rgba(148,163,184,.28);
+  background:rgba(255,255,255,.04);
+  color:var(--text-dim);text-decoration:none;
+  font-size:12px;font-weight:600;line-height:1;
+  transition:all .15s ease;
+  white-space:nowrap;
+}
+.header-link:hover{
+  color:var(--accent);
+  border-color:rgba(6,182,212,.45);
+  background:rgba(6,182,212,.08);
+}
+
+/* ── SEARCH ── */
+.search-wrap{position:relative}
+.search-wrap input{width:100%;padding:10px 36px 10px 14px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:13px;outline:none;transition:border .2s}
+.search-wrap input:focus{border-color:var(--accent)}
+.search-wrap input::placeholder{color:var(--text-dim)}
+.search-clear{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:16px;line-height:1;display:none}
+.search-clear.active{display:block}
+
+/* ── FILTER PANEL ── */
+.panel-label{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);font-weight:700}
+.filter-controls{display:flex;gap:8px}
+.filter-controls button{flex:1;padding:6px 0;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--text-dim);font-size:11px;font-weight:600;cursor:pointer;transition:all .15s}
+.filter-controls button:hover{border-color:var(--accent);color:var(--accent)}
+.cat-list{display:flex;flex-direction:column;gap:4px}
+.cat-btn{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;border:1px solid transparent;background:transparent;color:var(--text);font-size:12.5px;cursor:pointer;transition:all .15s;text-align:left;width:100%}
+.cat-btn:hover{background:rgba(255,255,255,.04)}
+.cat-btn.active{background:rgba(255,255,255,.06);border-color:var(--border)}
+.cat-btn .swatch{width:12px;height:12px;border-radius:3px;flex-shrink:0}
+.cat-btn .count{margin-left:auto;font-size:11px;color:var(--text-dim);font-weight:600}
+
+/* ── LEGEND STRIP (bottom of sidebar) ── */
+.sidebar-footer{margin-top:auto;padding-top:12px;border-top:1px solid var(--border);font-size:11px;color:var(--text-dim);line-height:1.6;text-align:center}
+.sidebar-footer a{color:var(--accent);text-decoration:none}
+
+/* ── LEAFLET OVERRIDES ── */
+.leaflet-container{background:#0b1120;font-family:'DM Sans',sans-serif}
+.leaflet-popup-content-wrapper{background:var(--card);color:var(--text);border-radius:10px;box-shadow:0 8px 30px rgba(0,0,0,.5)}
+.leaflet-popup-tip{background:var(--card)}
+.leaflet-popup-content{margin:0;padding:0;min-width:280px;max-width:360px}
+.popup-inner{padding:16px 20px}
+.popup-inner h3{font-family:'DM Sans',system-ui,sans-serif;font-weight:700;font-size:17px;margin-bottom:5px;line-height:1.3}
+.popup-inner .org{font-size:13px;color:var(--accent);margin-bottom:3px}
+.popup-inner .loc{font-size:12.5px;color:var(--text-dim);margin-bottom:10px}
+.popup-inner .thumb{width:100%;height:150px;object-fit:cover;border-radius:6px;margin-bottom:10px;background:var(--bg)}
+.popup-inner .desc{font-size:13.5px;color:var(--text-dim);line-height:1.6;margin-bottom:10px}
+.popup-inner .detail{font-size:12.5px;color:var(--text-dim);margin-bottom:6px}
+.popup-inner .detail span{color:var(--text)}
+.popup-inner .cat-badge{display:inline-block;font-size:11px;font-weight:600;padding:3px 9px;border-radius:4px;color:#fff;margin-bottom:10px;line-height:1.3}
+.popup-inner .link{font-size:13px;color:var(--accent);text-decoration:none;font-weight:600}
+.popup-inner .link:hover{text-decoration:underline}
+
+.marker-cluster{background:rgba(148,163,184,.18) !important}
+.marker-cluster div{background:rgba(71,85,105,.85) !important;color:#e2e8f0 !important;font-weight:700;font-size:12px;border:2px solid rgba(148,163,184,.45) !important}
+
+.leaflet-control-zoom{z-index:800 !important}
+.leaflet-control-zoom a{background:var(--card) !important;color:var(--text) !important;border-color:var(--border) !important}
+.leaflet-control-attribution{background:rgba(11,17,32,.8) !important;color:var(--text-dim) !important;font-size:10px !important}
+.leaflet-control-attribution a{color:var(--accent) !important}
+
+/* ── BURGER BUTTON (hidden on desktop) ── */
+.burger{display:none;background:none;border:none;color:var(--text);cursor:pointer;padding:6px;z-index:1;flex-shrink:0}
+.burger svg{display:block}
+
+/* ── OVERLAY (mobile only) ── */
+#overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:900;opacity:0;transition:opacity .25s}
+#overlay.visible{display:block;opacity:1}
+
+/* ── RESPONSIVE ── */
+@media(max-width:860px){
+  #app{grid-template-columns:1fr;grid-template-rows:auto 1fr}
+  #sidebar{
+    position:fixed;top:0;left:0;bottom:0;width:280px;z-index:1000;
+    transform:translateX(-100%);transition:transform .3s cubic-bezier(.4,0,.2,1);
+    border-right:1px solid var(--border);border-bottom:none;
+    grid-row:unset;max-height:none;
+  }
+  #sidebar.open{transform:translateX(0)}
+  #map-wrap{grid-row:2}
+  .burger{display:block}
+  #header{padding:10px 16px}
+  .logo-text h1{font-size:18px}
+  .logo-text .subtitle{font-size:10px;letter-spacing:.8px}
+  .octopolis-icon{width:36px;height:36px;font-size:20px;border-radius:10px}
+  .logo-group{gap:10px}
+  .header-meta{gap:10px}
+  .header-link{padding:6px 9px;font-size:11px}
+  /* smaller popups on mobile */
+  .leaflet-popup-content{min-width:220px;max-width:calc(100vw - 60px)}
+  .popup-inner{padding:12px 14px}
+  .popup-inner h3{font-size:15px}
+  .popup-inner .desc{font-size:12.5px}
+  .popup-inner .thumb{height:120px}
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- HEADER -->
+  <header id="header">
+    <button class="burger" id="burgerBtn" aria-label="Open filters">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+    <div class="logo-group">
+      <div class="octopolis-icon">&#x1F419;</div>
+      <div class="logo-text">
+        <h1>Octopolis</h1>
+        <div class="subtitle">Big Art for the Living Ocean</div>
+      </div>
+    </div>
+    <div class="header-meta">
+      <a class="header-link" href="https://www.big-art.org/octopolis" target="_blank" rel="noopener">Octopolis ↗</a>
+      <span class="header-count" id="reefCount">Loading…</span>
+    </div>
+  </header>
+
+  <!-- OVERLAY (mobile drawer backdrop) -->
+  <div id="overlay"></div>
+
+  <!-- SIDEBAR -->
+  <aside id="sidebar">
+    <div class="search-wrap">
+      <input type="text" id="searchInput" placeholder="Search reef name or location…" autocomplete="off" />
+      <button class="search-clear" id="searchClear">&times;</button>
+    </div>
+    <div class="panel-label">Categories</div>
+    <div class="filter-controls">
+      <button id="btnAll">Select All</button>
+      <button id="btnNone">Clear All</button>
+    </div>
+    <div class="cat-list" id="catList"></div>
+    <div class="sidebar-footer">
+      Artificial Reefs World Map<br>
+      The Octopolis Team<br>
+      <span style="opacity:.6">March 22, 2026</span><br>
+      <span style="opacity:.4;font-size:10px">v19</span>
+    </div>
+  </aside>
+
+  <!-- MAP -->
+  <div id="map-wrap"><div id="map"></div></div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
+<script>
+// ═══════════════════════════════════════════
+//  CATEGORY COLORS
+// ═══════════════════════════════════════════
+const CAT_COLORS={
+"Art and Sculpture Reef":"#ec4899",
+"Biorock Reef":"#84cc16",
+"Coastal Protection Reef":"#0ea5e9",
+"Coral Restoration Reef":"#10b981",
+"Engineered Concrete Reef":"#6b7280",
+"Freshwater Reef":"#22d3ee",
+"Memorial Reef":"#a78bfa",
+"National Fishery Program":"#f59e0b",
+"Oyster Restoration Reef":"#a9b9a9",
+"Reef Ball":"#06b6d4",
+"Rigs-to-Reefs":"#78716c",
+"Ship Reef":"#2563eb",
+"Vehicle & Aircraft Reef":"#f97316",
+"3D-Printed Reef":"#8b5cf6",
+"Failed / Legacy Reef":"#dc2626"
+};
+
+// ═══════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════
+const activeCats=new Set(Object.keys(CAT_COLORS));
+let searchTerm="";
+let REEFS=[];
+const markers=[];
+let catsBeforeSearch=null; // snapshot of active cats before search narrows them
+
+// ═══════════════════════════════════════════
+//  MAP INIT
+// ═══════════════════════════════════════════
+const isMobile=window.matchMedia("(max-width:860px)").matches;
+const map=L.map("map",{center:[20,10],zoom:2,minZoom:2,maxZoom:18,zoomControl:false,worldCopyJump:true});
+L.control.zoom({position:"bottomright"}).addTo(map);
+L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",{
+  attribution:'&copy; <a href="https://carto.com/">CARTO</a> &copy; <a href="https://osm.org/copyright">OSM</a>',
+  subdomains:"abcd",maxZoom:19
+}).addTo(map);
+
+const cluster=L.markerClusterGroup({
+  maxClusterRadius:45,
+  spiderfyOnMaxZoom:true,
+  showCoverageOnHover:false,
+  iconCreateFunction:function(c){
+    const n=c.getChildCount();
+    let sz="small";if(n>20)sz="medium";if(n>50)sz="large";
+    return L.divIcon({html:"<div>"+n+"</div>",className:"marker-cluster marker-cluster-"+sz,iconSize:L.point(36,36)});
+  }
+});
+map.addLayer(cluster);
+
+// ═══════════════════════════════════════════
+//  FILTERING
+// ═══════════════════════════════════════════
+function applyFilters(){
+  cluster.clearLayers();
+  let count=0;
+  const q=searchTerm.toLowerCase();
+  markers.forEach(m=>{
+    const r=m._reefData;
+    const catOk=activeCats.has(r.cat);
+    const searchOk=!q||r.name.toLowerCase().includes(q)||r.loc.toLowerCase().includes(q)||r.org.toLowerCase().includes(q);
+    if(catOk&&searchOk){cluster.addLayer(m);count++;}
+  });
+  document.getElementById("reefCount").textContent=count+" of "+REEFS.length+" reefs";
+}
+
+// ═══════════════════════════════════════════
+//  BUILD SIDEBAR CATEGORY BUTTONS
+// ═══════════════════════════════════════════
+function buildSidebar(){
+  const catCounts={};
+  REEFS.forEach(r=>{catCounts[r.cat]=(catCounts[r.cat]||0)+1;});
+
+  const catList=document.getElementById("catList");
+  catList.innerHTML="";
+  Object.keys(CAT_COLORS).forEach(cat=>{
+    const btn=document.createElement("button");
+    btn.className="cat-btn active";
+    btn.innerHTML=`<span class="swatch" style="background:${CAT_COLORS[cat]}"></span>${cat}<span class="count">${catCounts[cat]||0}</span>`;
+    btn.addEventListener("click",()=>{
+      if(activeCats.has(cat)){activeCats.delete(cat);btn.classList.remove("active");}
+      else{activeCats.add(cat);btn.classList.add("active");}
+      applyFilters();
+    });
+    btn._cat=cat;
+    catList.appendChild(btn);
+  });
+}
+
+function syncCatButtons(){
+  document.querySelectorAll("#catList .cat-btn").forEach(b=>{
+    if(activeCats.has(b._cat)) b.classList.add("active");
+    else b.classList.remove("active");
+  });
+}
+
+document.getElementById("btnAll").addEventListener("click",()=>{
+  Object.keys(CAT_COLORS).forEach(c=>activeCats.add(c));
+  catsBeforeSearch=null;
+  searchInput.value="";searchTerm="";
+  searchClear.classList.remove("active");
+  document.querySelectorAll("#catList .cat-btn").forEach(b=>b.classList.add("active"));
+  applyFilters();
+});
+document.getElementById("btnNone").addEventListener("click",()=>{
+  activeCats.clear();
+  catsBeforeSearch=null;
+  searchInput.value="";searchTerm="";
+  searchClear.classList.remove("active");
+  document.querySelectorAll("#catList .cat-btn").forEach(b=>b.classList.remove("active"));
+  applyFilters();
+});
+
+// ═══════════════════════════════════════════
+//  SEARCH
+// ═══════════════════════════════════════════
+const searchInput=document.getElementById("searchInput");
+const searchClear=document.getElementById("searchClear");
+searchInput.addEventListener("input",()=>{
+  searchTerm=searchInput.value.trim();
+  searchClear.classList.toggle("active",searchTerm.length>0);
+  const q=searchTerm.toLowerCase();
+  if(q){
+    // Save category state on first keystroke
+    if(!catsBeforeSearch) catsBeforeSearch=new Set(activeCats);
+    // Find which categories have matching reefs
+    const matchedCats=new Set();
+    markers.forEach(m=>{
+      const r=m._reefData;
+      if(r.name.toLowerCase().includes(q)||r.loc.toLowerCase().includes(q)||r.org.toLowerCase().includes(q)){
+        matchedCats.add(r.cat);
+      }
+    });
+    // Update active cats to only matched ones
+    activeCats.clear();
+    matchedCats.forEach(c=>activeCats.add(c));
+    syncCatButtons();
+  } else {
+    // Restore previous category state
+    if(catsBeforeSearch){
+      activeCats.clear();
+      catsBeforeSearch.forEach(c=>activeCats.add(c));
+      catsBeforeSearch=null;
+      syncCatButtons();
+    }
+  }
+  applyFilters();
+});
+searchClear.addEventListener("click",()=>{
+  searchInput.value="";searchTerm="";
+  searchClear.classList.remove("active");
+  if(catsBeforeSearch){
+    activeCats.clear();
+    catsBeforeSearch.forEach(c=>activeCats.add(c));
+    catsBeforeSearch=null;
+    syncCatButtons();
+  }
+  applyFilters();
+});
+
+// ═══════════════════════════════════════════
+//  MOBILE DRAWER TOGGLE
+// ═══════════════════════════════════════════
+const sidebar=document.getElementById("sidebar");
+const overlay=document.getElementById("overlay");
+const burgerBtn=document.getElementById("burgerBtn");
+
+function openDrawer(){sidebar.classList.add("open");overlay.classList.add("visible")}
+function closeDrawer(){sidebar.classList.remove("open");overlay.classList.remove("visible");setTimeout(()=>map.invalidateSize(),350)}
+
+burgerBtn.addEventListener("click",()=>{
+  sidebar.classList.contains("open")?closeDrawer():openDrawer();
+});
+overlay.addEventListener("click",closeDrawer);
+
+
+// ═══════════════════════════════════════════
+//  LOAD CSV → BUILD MARKERS → RENDER
+// ═══════════════════════════════════════════
+fetch("./artificial_reefs_worldwide.csv")
+  .then(res=>{
+    if(!res.ok) throw new Error("Failed to load CSV: "+res.status);
+    return res.text();
+  })
+  .then(csv=>{
+    const parsed=Papa.parse(csv,{header:true,skipEmptyLines:true});
+    REEFS=parsed.data.map(row=>({
+      name:  row.Name||"",
+      org:   row.Organization||"",
+      loc:   row.Location||"",
+      size:  row.Size||"",
+      design:row.Design||"",
+      cat:   row.PrimaryCategory||"",
+      desc:  row.Description||"",
+      url:   row.URL||"",
+      lat:   parseFloat(row.Latitude),
+      lng:   parseFloat(row.Longitude),
+      img:   row.ImageURL||""
+    })).filter(r=>!isNaN(r.lat)&&!isNaN(r.lng));
+
+    // create markers
+    REEFS.forEach(r=>{
+      const color=CAT_COLORS[r.cat]||"#999";
+      const m=L.circleMarker([r.lat,r.lng],{radius:7,fillColor:color,color:"rgba(255,255,255,.25)",weight:1,fillOpacity:.85});
+      let imgHtml=r.img?`<img class="thumb" src="${r.img}" referrerpolicy="no-referrer" onerror="this.style.display='none'" alt="" loading="lazy">`:"";
+      m.bindPopup(`<div class="popup-inner">
+        <h3>${r.name}</h3>
+        <span class="cat-badge" style="background:${color}">${r.cat}</span>
+        <div class="org">${r.org}</div>
+        <div class="loc">${r.loc}</div>
+        ${imgHtml}
+        <div class="desc">${r.desc}</div>
+        <div class="detail"><span>Size:</span> ${r.size}</div>
+        <div class="detail"><span>Design:</span> ${r.design}</div>
+        <a class="link" href="${r.url}" target="_blank" rel="noopener">Learn more →</a>
+      </div>`,{maxWidth:320,minWidth:240,autoPan:true,autoPanPadding:L.point(50,50)});
+      m._reefData=r;
+      markers.push(m);
+    });
+
+    buildSidebar();
+    applyFilters();
+  })
+  .catch(err=>{
+    console.error(err);
+    document.getElementById("reefCount").textContent="Error loading data";
+    document.getElementById("catList").innerHTML=
+      '<div style="color:#f87171;font-size:12px;padding:12px">'+
+      'Could not load <code>artificial_reefs_worldwide.csv</code>.<br><br>'+
+      'Make sure the CSV file is in the same folder as this HTML file, '+
+      'and that you are serving both via a local web server (not opening the HTML directly from disk).'+
+      '</div>';
+  });
+</script>
+</body>
+</html>
