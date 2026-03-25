@@ -22,15 +22,16 @@
 html,body{height:100%;font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(--text);overflow:hidden}
 
 /* ── LAYOUT ── */
-#app{display:grid;grid-template-rows:auto 1fr;grid-template-columns:260px 1fr;height:100vh}
+#app{display:grid;grid-template-rows:auto auto 1fr;grid-template-columns:260px 1fr;height:100vh}
 #header{grid-column:1/-1;background:var(--header-gradient);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:12px 28px;gap:20px;position:relative;overflow:hidden}
 #header::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 600px 200px at 20% 50%,rgba(6,182,212,.08),transparent);pointer-events:none}
-#sidebar{grid-row:2;background:var(--panel);border-right:1px solid var(--border);overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:14px}
-#map-wrap{grid-row:2;position:relative}
+#subheader{grid-column:1/-1;background:rgba(6,182,212,.06);border-bottom:1px solid var(--border);padding:5px 28px;text-align:center;font-size:13px;font-weight:600;color:var(--accent);letter-spacing:.3px}
+#sidebar{grid-row:3;background:var(--panel);border-right:1px solid var(--border);overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:14px}
+#map-wrap{grid-row:3;position:relative}
 #map{width:100%;height:100%}
 
 /* ── HEADER ── */
-.logo-group{display:flex;align-items:center;gap:16px;z-index:1}
+.logo-group{display:flex;align-items:center;gap:16px;z-index:1;cursor:pointer}
 .octopolis-icon{width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#06b6d4,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0}
 .logo-text h1{font-family:'DM Serif Display',serif;font-size:22px;letter-spacing:.5px;color:#fff;line-height:1.15}
 .logo-text .subtitle{font-size:11.5px;color:var(--text-dim);letter-spacing:1.2px;text-transform:uppercase;font-weight:500}
@@ -71,6 +72,10 @@ html,body{height:100%;font-family:'DM Sans',system-ui,sans-serif;background:var(
 .cat-btn.active{background:rgba(255,255,255,.06);border-color:var(--border)}
 .cat-btn .swatch{width:12px;height:12px;border-radius:3px;flex-shrink:0}
 .cat-btn .count{margin-left:auto;font-size:11px;color:var(--text-dim);font-weight:600}
+/* disabled state: search is active, non-matching cats are locked */
+.cat-list.search-active .cat-btn{pointer-events:none;cursor:default}
+.cat-list.search-active .cat-btn:not(.active){opacity:.3}
+.cat-list.search-active .cat-btn:not(.active) .swatch{filter:grayscale(1)}
 
 /* ── LEGEND STRIP (bottom of sidebar) ── */
 .sidebar-footer{margin-top:auto;padding-top:12px;border-top:1px solid var(--border);font-size:11px;color:var(--text-dim);line-height:1.6;text-align:center}
@@ -84,7 +89,8 @@ html,body{height:100%;font-family:'DM Sans',system-ui,sans-serif;background:var(
 .popup-inner{padding:16px 20px}
 .popup-inner h3{font-family:'DM Sans',system-ui,sans-serif;font-weight:700;font-size:17px;margin-bottom:5px;line-height:1.3}
 .popup-inner .org{font-size:13px;color:var(--accent);margin-bottom:3px}
-.popup-inner .loc{font-size:12.5px;color:var(--text-dim);margin-bottom:10px}
+.popup-inner .loc{font-size:12.5px;color:var(--text-dim);margin-bottom:3px}
+.popup-inner .region{font-size:11.5px;color:#8b9cc0;margin-bottom:10px;font-weight:600}
 .popup-inner .thumb{width:100%;height:150px;object-fit:cover;border-radius:6px;margin-bottom:10px;background:var(--bg)}
 .popup-inner .desc{font-size:13.5px;color:var(--text-dim);line-height:1.6;margin-bottom:10px}
 .popup-inner .detail{font-size:12.5px;color:var(--text-dim);margin-bottom:6px}
@@ -101,6 +107,27 @@ html,body{height:100%;font-family:'DM Sans',system-ui,sans-serif;background:var(
 .leaflet-control-attribution{background:rgba(11,17,32,.8) !important;color:var(--text-dim) !important;font-size:10px !important}
 .leaflet-control-attribution a{color:var(--accent) !important}
 
+/* ── ABOUT MODAL ── */
+.about-overlay{display:none;position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.65);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);align-items:center;justify-content:center}
+.about-overlay.visible{display:flex}
+body.modal-open{overflow:hidden}
+.about-card{position:relative;background:var(--panel);border:1px solid var(--border);border-radius:14px;width:92%;max-width:640px;max-height:82vh;display:flex;flex-direction:column;box-shadow:0 16px 48px rgba(0,0,0,.6);animation:aboutFadeIn .2s ease}
+@keyframes aboutFadeIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.about-close{position:absolute;top:12px;right:14px;background:none;border:none;color:var(--text-dim);font-size:26px;line-height:1;cursor:pointer;z-index:1;padding:4px 8px;border-radius:6px;transition:color .15s,background .15s}
+.about-close:hover{color:var(--text);background:rgba(255,255,255,.06)}
+.about-body{overflow-y:auto;padding:32px 36px;font-size:14.5px;line-height:1.75;color:var(--text)}
+.about-body h1{font-family:'DM Serif Display',serif;font-size:22px;color:#fff;margin:0 0 8px;line-height:1.3}
+.about-body h2{font-family:'DM Serif Display',serif;font-size:17px;color:var(--accent);margin:24px 0 8px;line-height:1.3}
+.about-body h3{font-size:15px;font-weight:700;color:#fff;margin:18px 0 6px}
+.about-body p{margin:0 0 12px;color:var(--text-dim)}
+.about-body a{color:var(--accent);text-decoration:none;font-weight:500}
+.about-body a:hover{text-decoration:underline}
+.about-body ul,.about-body ol{margin:0 0 12px 20px;color:var(--text-dim)}
+.about-body li{margin-bottom:4px}
+.about-body strong{color:var(--text);font-weight:600}
+.about-body hr{border:none;border-top:1px solid var(--border);margin:20px 0}
+.about-body code{font-size:13px;background:rgba(255,255,255,.06);padding:2px 6px;border-radius:4px}
+
 /* ── BURGER BUTTON (hidden on desktop) ── */
 .burger{display:none;background:none;border:none;color:var(--text);cursor:pointer;padding:6px;z-index:1;flex-shrink:0}
 .burger svg{display:block}
@@ -111,7 +138,8 @@ html,body{height:100%;font-family:'DM Sans',system-ui,sans-serif;background:var(
 
 /* ── RESPONSIVE ── */
 @media(max-width:860px){
-  #app{grid-template-columns:1fr;grid-template-rows:auto 1fr}
+  #app{grid-template-columns:1fr;grid-template-rows:auto auto 1fr}
+  #subheader{padding:4px 16px;font-size:12px}
   #sidebar{
     position:fixed;top:0;left:0;bottom:0;width:280px;z-index:1000;
     transform:translateX(-100%);transition:transform .3s cubic-bezier(.4,0,.2,1);
@@ -119,7 +147,7 @@ html,body{height:100%;font-family:'DM Sans',system-ui,sans-serif;background:var(
     grid-row:unset;max-height:none;
   }
   #sidebar.open{transform:translateX(0)}
-  #map-wrap{grid-row:2}
+  #map-wrap{grid-row:3}
   .burger{display:block}
   #header{padding:10px 16px}
   .logo-text h1{font-size:18px}
@@ -128,6 +156,11 @@ html,body{height:100%;font-family:'DM Sans',system-ui,sans-serif;background:var(
   .logo-group{gap:10px}
   .header-meta{gap:10px}
   .header-link{padding:6px 9px;font-size:11px}
+  /* about modal mobile */
+  .about-card{width:96%;max-height:88vh;border-radius:10px}
+  .about-body{padding:24px 20px;font-size:13.5px}
+  .about-body h1{font-size:19px}
+  .about-body h2{font-size:15px}
   /* smaller popups on mobile */
   .leaflet-popup-content{min-width:220px;max-width:calc(100vw - 60px)}
   .popup-inner{padding:12px 14px}
@@ -153,13 +186,23 @@ html,body{height:100%;font-family:'DM Sans',system-ui,sans-serif;background:var(
       </div>
     </div>
     <div class="header-meta">
-      <a class="header-link" href="https://www.big-art.org/octopolis" target="_blank" rel="noopener">Octopolis ↗</a>
-      <span class="header-count" id="reefCount">Loading…</span>
+      <a class="header-link" href="https://www.gofundme.com/f/octopolis-come-to-life" target="_blank" rel="noopener">Help Bring Octopolis to Life ↗</a>
     </div>
   </header>
 
+  <!-- SUB-HEADER: reef count -->
+  <div id="subheader"><span id="reefCount">Loading…</span></div>
+
   <!-- OVERLAY (mobile drawer backdrop) -->
   <div id="overlay"></div>
+
+  <!-- ABOUT MODAL -->
+  <div id="aboutOverlay" class="about-overlay">
+    <div class="about-card">
+      <button class="about-close" id="aboutClose" aria-label="Close">&times;</button>
+      <div class="about-body" id="aboutBody"></div>
+    </div>
+  </div>
 
   <!-- SIDEBAR -->
   <aside id="sidebar">
@@ -177,7 +220,7 @@ html,body{height:100%;font-family:'DM Sans',system-ui,sans-serif;background:var(
       Artificial Reefs World Map<br>
       The Octopolis Team<br>
       <span style="opacity:.6">March 22, 2026</span><br>
-      <span style="opacity:.4;font-size:10px">v19</span>
+      <span style="opacity:.4;font-size:10px">v1.21</span>
     </div>
   </aside>
 
@@ -186,9 +229,58 @@ html,body{height:100%;font-family:'DM Sans',system-ui,sans-serif;background:var(
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 <script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
 <script>
+// ═══════════════════════════════════════════
+//  ABOUT MODAL
+// ═══════════════════════════════════════════
+const ABOUT_FALLBACK=`<h1>Artificial Reefs of the World</h1>
+<p>Artificial Reefs of the World is an open interactive map created by the Octopolis team to make the global landscape of artificial reefs easier to see and understand. It also supports the broader Octopolis project, a large-scale public art installation being researched for eventual underwater deployment as an artificial reef, with this work helping identify the right marine environment for its structural, ecological, and cultural goals.</p>
+<p>Contact: <a href="mailto:octopolisproject@gmail.com">octopolisproject@gmail.com</a></p>
+<p>Support: <a href="https://www.gofundme.com/f/octopolis-come-to-life" target="_blank" rel="noopener">gofundme.com/f/octopolis-come-to-life</a></p>`;
+
+let aboutHtmlCache=null;
+
+// Fetch and parse ABOUT.md on load
+fetch("./ABOUT.md")
+  .then(res=>{if(!res.ok) throw new Error(res.status);return res.text()})
+  .then(md=>{
+    // Configure marked: strip images, open links in new tabs
+    const renderer=new marked.Renderer();
+    renderer.image=function(){return ""};            // strip all images
+    renderer.link=function({href,title,text}){
+      const t=title?` title="${title}"`:"";
+      return `<a href="${href}"${t} target="_blank" rel="noopener">${text}</a>`;
+    };
+    aboutHtmlCache=marked.parse(md,{renderer});
+  })
+  .catch(()=>{aboutHtmlCache=ABOUT_FALLBACK;});
+
+// Modal elements
+const aboutOverlay=document.getElementById("aboutOverlay");
+const aboutBody=document.getElementById("aboutBody");
+const aboutClose=document.getElementById("aboutClose");
+
+function openAbout(){
+  aboutBody.innerHTML=aboutHtmlCache||ABOUT_FALLBACK;
+  aboutOverlay.classList.add("visible");
+  document.body.classList.add("modal-open");
+}
+function closeAbout(){
+  aboutOverlay.classList.remove("visible");
+  document.body.classList.remove("modal-open");
+}
+
+// Click on logo group → open about
+document.querySelector(".logo-group").addEventListener("click",openAbout);
+
+// Close: ✕ button, click outside card, Escape key
+aboutClose.addEventListener("click",closeAbout);
+aboutOverlay.addEventListener("click",e=>{if(e.target===aboutOverlay) closeAbout();});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&aboutOverlay.classList.contains("visible")) closeAbout();});
+
 // ═══════════════════════════════════════════
 //  CATEGORY COLORS
 // ═══════════════════════════════════════════
@@ -213,11 +305,14 @@ const CAT_COLORS={
 // ═══════════════════════════════════════════
 //  STATE
 // ═══════════════════════════════════════════
-const activeCats=new Set(Object.keys(CAT_COLORS));
+const activeCats=new Set();          // starts empty → ghost/inactive state on init
 let searchTerm="";
 let REEFS=[];
 const markers=[];
-let catsBeforeSearch=null; // snapshot of active cats before search narrows them
+const ghostMarkers=[];                // gray echo markers for inactive state
+let ghostGroup=null;                  // L.layerGroup for ghost markers
+let catsBeforeSearch=null;            // snapshot of active cats before search narrows them
+const GHOST_COLOR="#4b5563";          // gray for inactive markers
 
 // ═══════════════════════════════════════════
 //  MAP INIT
@@ -252,10 +347,20 @@ function applyFilters(){
   markers.forEach(m=>{
     const r=m._reefData;
     const catOk=activeCats.has(r.cat);
-    const searchOk=!q||r.name.toLowerCase().includes(q)||r.loc.toLowerCase().includes(q)||r.org.toLowerCase().includes(q);
+    const searchOk=!q||r.name.toLowerCase().includes(q)||r.loc.toLowerCase().includes(q)||r.org.toLowerCase().includes(q)||r.region.toLowerCase().includes(q);
     if(catOk&&searchOk){cluster.addLayer(m);count++;}
   });
-  document.getElementById("reefCount").textContent=count+" of "+REEFS.length+" reefs";
+
+  // Ghost/inactive state: show all markers in gray when nothing is selected
+  if(ghostGroup){
+    if(count===0){
+      if(!map.hasLayer(ghostGroup)) map.addLayer(ghostGroup);
+    } else {
+      if(map.hasLayer(ghostGroup)) map.removeLayer(ghostGroup);
+    }
+  }
+
+  document.getElementById("reefCount").textContent=count+" of "+REEFS.length+" reefs selected";
 }
 
 // ═══════════════════════════════════════════
@@ -269,7 +374,7 @@ function buildSidebar(){
   catList.innerHTML="";
   Object.keys(CAT_COLORS).forEach(cat=>{
     const btn=document.createElement("button");
-    btn.className="cat-btn active";
+    btn.className="cat-btn"+(activeCats.has(cat)?" active":"");
     btn.innerHTML=`<span class="swatch" style="background:${CAT_COLORS[cat]}"></span>${cat}<span class="count">${catCounts[cat]||0}</span>`;
     btn.addEventListener("click",()=>{
       if(activeCats.has(cat)){activeCats.delete(cat);btn.classList.remove("active");}
@@ -282,6 +387,7 @@ function buildSidebar(){
 }
 
 function syncCatButtons(){
+  document.getElementById("catList").classList.toggle("search-active",searchTerm.length>0);
   document.querySelectorAll("#catList .cat-btn").forEach(b=>{
     if(activeCats.has(b._cat)) b.classList.add("active");
     else b.classList.remove("active");
@@ -293,7 +399,7 @@ document.getElementById("btnAll").addEventListener("click",()=>{
   catsBeforeSearch=null;
   searchInput.value="";searchTerm="";
   searchClear.classList.remove("active");
-  document.querySelectorAll("#catList .cat-btn").forEach(b=>b.classList.add("active"));
+  syncCatButtons();
   applyFilters();
 });
 document.getElementById("btnNone").addEventListener("click",()=>{
@@ -301,7 +407,7 @@ document.getElementById("btnNone").addEventListener("click",()=>{
   catsBeforeSearch=null;
   searchInput.value="";searchTerm="";
   searchClear.classList.remove("active");
-  document.querySelectorAll("#catList .cat-btn").forEach(b=>b.classList.remove("active"));
+  syncCatButtons();
   applyFilters();
 });
 
@@ -321,7 +427,7 @@ searchInput.addEventListener("input",()=>{
     const matchedCats=new Set();
     markers.forEach(m=>{
       const r=m._reefData;
-      if(r.name.toLowerCase().includes(q)||r.loc.toLowerCase().includes(q)||r.org.toLowerCase().includes(q)){
+      if(r.name.toLowerCase().includes(q)||r.loc.toLowerCase().includes(q)||r.org.toLowerCase().includes(q)||r.region.toLowerCase().includes(q)){
         matchedCats.add(r.cat);
       }
     });
@@ -347,8 +453,8 @@ searchClear.addEventListener("click",()=>{
     activeCats.clear();
     catsBeforeSearch.forEach(c=>activeCats.add(c));
     catsBeforeSearch=null;
-    syncCatButtons();
   }
+  syncCatButtons();
   applyFilters();
 });
 
@@ -389,7 +495,8 @@ fetch("./artificial_reefs_worldwide.csv")
       url:   row.URL||"",
       lat:   parseFloat(row.Latitude),
       lng:   parseFloat(row.Longitude),
-      img:   row.ImageURL||""
+      img:   row.ImageURL||"",
+      region:row.Region||""
     })).filter(r=>!isNaN(r.lat)&&!isNaN(r.lng));
 
     // create markers
@@ -402,6 +509,7 @@ fetch("./artificial_reefs_worldwide.csv")
         <span class="cat-badge" style="background:${color}">${r.cat}</span>
         <div class="org">${r.org}</div>
         <div class="loc">${r.loc}</div>
+        ${r.region?`<div class="region">${r.region.replace(" / "," / ")}</div>`:""}
         ${imgHtml}
         <div class="desc">${r.desc}</div>
         <div class="detail"><span>Size:</span> ${r.size}</div>
@@ -410,6 +518,17 @@ fetch("./artificial_reefs_worldwide.csv")
       </div>`,{maxWidth:320,minWidth:240,autoPan:true,autoPanPadding:L.point(50,50)});
       m._reefData=r;
       markers.push(m);
+    });
+
+    // Build ghost layer (gray, non-interactive echo of all markers)
+    ghostGroup=L.layerGroup();
+    REEFS.forEach(r=>{
+      const gm=L.circleMarker([r.lat,r.lng],{
+        radius:7,fillColor:GHOST_COLOR,color:"rgba(255,255,255,.10)",
+        weight:1,fillOpacity:.45,interactive:false
+      });
+      ghostMarkers.push(gm);
+      ghostGroup.addLayer(gm);
     });
 
     buildSidebar();

@@ -1,0 +1,27 @@
+# Discovery Agent Swarm — run outputs (changesets, reports)
+Discovery Agent Swarm Runs/
+
+# macOS
+.DS_Store
+*.DS_Store
+
+# Editor / IDE
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# Python (if running agent scripts locally)
+__pycache__/
+*.pyc
+*.pyo
+.env
+venv/
+.venv/
+
+# Node (if running localhost for dashboard testing)
+node_modules/
+
+# Logs
+*.log
