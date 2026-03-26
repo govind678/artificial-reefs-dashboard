@@ -91,7 +91,14 @@ html,body{height:100%;font-family:'DM Sans',system-ui,sans-serif;background:var(
 .popup-inner .org{font-size:13px;color:var(--accent);margin-bottom:3px}
 .popup-inner .loc{font-size:12.5px;color:var(--text-dim);margin-bottom:3px}
 .popup-inner .region{font-size:11.5px;color:#8b9cc0;margin-bottom:10px;font-weight:600}
-.popup-inner .thumb{width:100%;height:150px;object-fit:cover;border-radius:6px;margin-bottom:10px;background:var(--bg)}
+.popup-inner .thumb-wrap{width:100%;height:150px;border-radius:6px;margin-bottom:10px;background:var(--bg);position:relative;overflow:hidden}
+.popup-inner .thumb-wrap.loaded{background:none}
+.popup-inner .thumb-wrap::after{content:'';position:absolute;top:50%;left:50%;width:24px;height:24px;margin:-12px 0 0 -12px;border:2.5px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:thumbSpin .6s linear infinite}
+.popup-inner .thumb-wrap.loaded::after,.popup-inner .thumb-wrap.failed::after{display:none}
+.popup-inner .thumb-wrap.failed{display:none}
+@keyframes thumbSpin{to{transform:rotate(360deg)}}
+.popup-inner .thumb{width:100%;height:100%;object-fit:cover;display:block;opacity:0;transition:opacity .2s}
+.popup-inner .thumb-wrap.loaded .thumb{opacity:1}
 .popup-inner .desc{font-size:13.5px;color:var(--text-dim);line-height:1.6;margin-bottom:10px}
 .popup-inner .detail{font-size:12.5px;color:var(--text-dim);margin-bottom:6px}
 .popup-inner .detail span{color:var(--text)}
@@ -166,7 +173,7 @@ body.modal-open{overflow:hidden}
   .popup-inner{padding:12px 14px}
   .popup-inner h3{font-size:15px}
   .popup-inner .desc{font-size:12.5px}
-  .popup-inner .thumb{height:120px}
+  .popup-inner .thumb-wrap{height:120px}
 }
 </style>
 </head>
@@ -220,7 +227,7 @@ body.modal-open{overflow:hidden}
       Artificial Reefs World Map<br>
       The Octopolis Team<br>
       <span style="opacity:.6">March 22, 2026</span><br>
-      <span style="opacity:.4;font-size:10px">v1.22</span>
+      <span style="opacity:.4;font-size:10px">v1.23</span>
     </div>
   </aside>
 
@@ -506,7 +513,7 @@ fetch("./artificial_reefs_worldwide.csv")
     REEFS.forEach(r=>{
       const color=CAT_COLORS[r.cat]||"#999";
       const m=L.circleMarker([r.lat,r.lng],{radius:markerRadius,fillColor:color,color:"rgba(255,255,255,.25)",weight:1,fillOpacity:.85,renderer:hitRenderer});
-      let imgHtml=r.img?`<img class="thumb" src="${r.img}" referrerpolicy="no-referrer" onerror="this.style.display='none'" alt="" loading="lazy">`:"";
+      let imgHtml=r.img?`<div class="thumb-wrap"><img class="thumb" src="${r.img}" referrerpolicy="no-referrer" onload="this.parentNode.classList.add('loaded')" onerror="this.parentNode.classList.add('failed')" alt="" loading="lazy"></div>`:"";
       m.bindPopup(`<div class="popup-inner">
         <h3>${r.name}</h3>
         <span class="cat-badge" style="background:${color}">${r.cat}</span>
@@ -561,47 +568,6 @@ fetch("./artificial_reefs_worldwide.csv")
     }
 
     applyFilters();
-
-    // ─── Viewport-aware image preloading ───
-    const preloadedUrls=new Set();
-    const MAX_PRELOAD_TOTAL=50;
-    const PRELOAD_BATCH_ZOOMIN=12;
-    const PRELOAD_BATCH_ZOOMOUT=3;
-    let previousZoom=map.getZoom();
-
-    function preloadVisibleImages(){
-      if(preloadedUrls.size>=MAX_PRELOAD_TOTAL) return;
-      const currentZoom=map.getZoom();
-      const batchLimit=currentZoom>=previousZoom?PRELOAD_BATCH_ZOOMIN:PRELOAD_BATCH_ZOOMOUT;
-      previousZoom=currentZoom;
-
-      const bounds=map.getBounds();
-      const queue=[];
-      for(let i=0;i<markers.length&&queue.length<batchLimit;i++){
-        const r=markers[i]._reefData;
-        if(!r.img||preloadedUrls.has(r.img)) continue;
-        if(bounds.contains(markers[i].getLatLng())) queue.push(r.img);
-      }
-
-      // Drip-feed via idle callback to avoid blocking UI
-      function drip(){
-        if(!queue.length||preloadedUrls.size>=MAX_PRELOAD_TOTAL) return;
-        const url=queue.shift();
-        preloadedUrls.add(url);
-        new Image().src=url;
-        if(queue.length){
-          (window.requestIdleCallback||setTimeout)(drip,{timeout:500});
-        }
-      }
-      (window.requestIdleCallback||setTimeout)(drip,{timeout:500});
-    }
-
-    // Debounce: fire 300ms after map stops moving
-    let preloadTimer=null;
-    map.on("moveend",function(){
-      clearTimeout(preloadTimer);
-      preloadTimer=setTimeout(preloadVisibleImages,300);
-    });
   })
   .catch(err=>{
     console.error(err);
