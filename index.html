@@ -22,12 +22,12 @@
 html,body{height:100%;font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(--text);overflow:hidden}
 
 /* ── LAYOUT ── */
-#app{display:grid;grid-template-rows:auto auto 1fr;grid-template-columns:260px 1fr;height:100vh}
-#header{grid-column:1/-1;background:var(--header-gradient);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:12px 28px;gap:20px;position:relative;overflow:hidden}
+#app{display:grid;grid-template-rows:auto auto 1fr;grid-template-columns:260px 1fr;position:fixed;inset:0}
+#header{grid-column:1/-1;background:var(--header-gradient);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:12px 28px;gap:20px;position:relative;overflow:hidden;z-index:10}
 #header::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 600px 200px at 20% 50%,rgba(6,182,212,.08),transparent);pointer-events:none}
-#subheader{grid-column:1/-1;background:rgba(6,182,212,.06);border-bottom:1px solid var(--border);padding:5px 28px;text-align:center;font-size:13px;font-weight:600;color:var(--accent);letter-spacing:.3px}
+#subheader{grid-column:1/-1;background:rgba(6,182,212,.06);border-bottom:1px solid var(--border);padding:5px 28px;text-align:center;font-size:13px;font-weight:600;color:var(--accent);letter-spacing:.3px;position:relative;z-index:10}
 #sidebar{grid-row:3;background:var(--panel);border-right:1px solid var(--border);overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:14px}
-#map-wrap{grid-row:3;position:relative}
+#map-wrap{grid-row:3;position:relative;z-index:0}
 #map{width:100%;height:100%}
 
 /* ── HEADER ── */
@@ -220,7 +220,7 @@ body.modal-open{overflow:hidden}
       Artificial Reefs World Map<br>
       The Octopolis Team<br>
       <span style="opacity:.6">March 22, 2026</span><br>
-      <span style="opacity:.4;font-size:10px">v1.21</span>
+      <span style="opacity:.4;font-size:10px">v1.22</span>
     </div>
   </aside>
 
@@ -457,6 +457,7 @@ searchClear.addEventListener("click",()=>{
   syncCatButtons();
   applyFilters();
 });
+
 
 // ═══════════════════════════════════════════
 //  MOBILE DRAWER TOGGLE
