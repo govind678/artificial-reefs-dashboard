@@ -99,8 +99,8 @@ html,body{height:100%;font-family:'DM Sans',system-ui,sans-serif;background:var(
 .popup-inner .link{font-size:13px;color:var(--accent);text-decoration:none;font-weight:600}
 .popup-inner .link:hover{text-decoration:underline}
 
-.marker-cluster{background:rgba(148,163,184,.18) !important}
-.marker-cluster div{background:rgba(71,85,105,.85) !important;color:#e2e8f0 !important;font-weight:700;font-size:12px;border:2px solid rgba(148,163,184,.45) !important}
+.marker-cluster{background:rgba(148,163,184,.18) !important;display:flex !important;align-items:center !important;justify-content:center !important;border-radius:50% !important}
+.marker-cluster div{background:rgba(71,85,105,.85) !important;color:#e2e8f0 !important;font-weight:700;font-size:12px;border:2px solid rgba(148,163,184,.45) !important;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0;line-height:1}
 
 .leaflet-control-zoom{z-index:800 !important}
 .leaflet-control-zoom a{background:var(--card) !important;color:var(--text) !important;border-color:var(--border) !important}
@@ -500,9 +500,11 @@ fetch("./artificial_reefs_worldwide.csv")
     })).filter(r=>!isNaN(r.lat)&&!isNaN(r.lng));
 
     // create markers
+    const markerRadius=6;
+    const hitRenderer=L.canvas({tolerance:isMobile?15:5});
     REEFS.forEach(r=>{
       const color=CAT_COLORS[r.cat]||"#999";
-      const m=L.circleMarker([r.lat,r.lng],{radius:7,fillColor:color,color:"rgba(255,255,255,.25)",weight:1,fillOpacity:.85});
+      const m=L.circleMarker([r.lat,r.lng],{radius:markerRadius,fillColor:color,color:"rgba(255,255,255,.25)",weight:1,fillOpacity:.85,renderer:hitRenderer});
       let imgHtml=r.img?`<img class="thumb" src="${r.img}" referrerpolicy="no-referrer" onerror="this.style.display='none'" alt="" loading="lazy">`:"";
       m.bindPopup(`<div class="popup-inner">
         <h3>${r.name}</h3>
@@ -524,15 +526,81 @@ fetch("./artificial_reefs_worldwide.csv")
     ghostGroup=L.layerGroup();
     REEFS.forEach(r=>{
       const gm=L.circleMarker([r.lat,r.lng],{
-        radius:7,fillColor:GHOST_COLOR,color:"rgba(255,255,255,.10)",
+        radius:markerRadius,fillColor:GHOST_COLOR,color:"rgba(255,255,255,.10)",
         weight:1,fillOpacity:.45,interactive:false
       });
       ghostMarkers.push(gm);
       ghostGroup.addLayer(gm);
     });
 
+    // Preconnect to top image host domains by frequency (DNS + TCP + TLS, zero image bytes)
+    const MAX_PRECONNECTS=8;
+    const hostFrequency={};
+    REEFS.forEach(r=>{
+      if(!r.img) return;
+      try{const o=new URL(r.img).origin;hostFrequency[o]=(hostFrequency[o]||0)+1;}catch(e){}
+    });
+    Object.entries(hostFrequency)
+      .sort((a,b)=>b[1]-a[1])
+      .slice(0,MAX_PRECONNECTS)
+      .forEach(([origin])=>{
+        const link=document.createElement("link");
+        link.rel="preconnect";
+        link.href=origin;
+        link.crossOrigin="anonymous";
+        document.head.appendChild(link);
+      });
+
     buildSidebar();
+
+    // Mobile/tablet: auto-select all categories on initial load
+    if(isMobile){
+      Object.keys(CAT_COLORS).forEach(c=>activeCats.add(c));
+      syncCatButtons();
+    }
+
     applyFilters();
+
+    // ─── Viewport-aware image preloading ───
+    const preloadedUrls=new Set();
+    const MAX_PRELOAD_TOTAL=50;
+    const PRELOAD_BATCH_ZOOMIN=12;
+    const PRELOAD_BATCH_ZOOMOUT=3;
+    let previousZoom=map.getZoom();
+
+    function preloadVisibleImages(){
+      if(preloadedUrls.size>=MAX_PRELOAD_TOTAL) return;
+      const currentZoom=map.getZoom();
+      const batchLimit=currentZoom>=previousZoom?PRELOAD_BATCH_ZOOMIN:PRELOAD_BATCH_ZOOMOUT;
+      previousZoom=currentZoom;
+
+      const bounds=map.getBounds();
+      const queue=[];
+      for(let i=0;i<markers.length&&queue.length<batchLimit;i++){
+        const r=markers[i]._reefData;
+        if(!r.img||preloadedUrls.has(r.img)) continue;
+        if(bounds.contains(markers[i].getLatLng())) queue.push(r.img);
+      }
+
+      // Drip-feed via idle callback to avoid blocking UI
+      function drip(){
+        if(!queue.length||preloadedUrls.size>=MAX_PRELOAD_TOTAL) return;
+        const url=queue.shift();
+        preloadedUrls.add(url);
+        new Image().src=url;
+        if(queue.length){
+          (window.requestIdleCallback||setTimeout)(drip,{timeout:500});
+        }
+      }
+      (window.requestIdleCallback||setTimeout)(drip,{timeout:500});
+    }
+
+    // Debounce: fire 300ms after map stops moving
+    let preloadTimer=null;
+    map.on("moveend",function(){
+      clearTimeout(preloadTimer);
+      preloadTimer=setTimeout(preloadVisibleImages,300);
+    });
   })
   .catch(err=>{
     console.error(err);

@@ -12,13 +12,14 @@ Discovery Agent Swarm Runs/
 .vscode/
 .idea/
 
-# Python (if running agent scripts locally)
+# Python (agent scripts)
 __pycache__/
 *.pyc
 *.pyo
 .env
 venv/
 .venv/
+reef_discovery/
 
 # Node (if running localhost for dashboard testing)
 node_modules/
